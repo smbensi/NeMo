@@ -26,11 +26,13 @@ from nemo.collections.asr.losses.rnnt import RNNTLoss
 from nemo.collections.asr.metrics.rnnt_wer_bpe import RNNTBPEWER, RNNTBPEDecoding
 from nemo.collections.asr.models.rnnt_models import EncDecRNNTModel
 
+# D.R. changed this mixin
 from nemo.collections.asr.parts.mixins import ASRAGGBPEMixin
 from nemo.collections.asr.parts.preprocessing.perturb import process_augmentations
 from nemo.core.classes.common import PretrainedModelInfo
 from nemo.utils import logging, model_utils
 
+# D.R. changed this mixin
 class EncDecRNNTBPEMultiModel(EncDecRNNTModel, ASRAGGBPEMixin):
     """Base class for encoder decoder RNNT-based models with subword tokenization."""
 
@@ -43,6 +45,15 @@ class EncDecRNNTBPEMultiModel(EncDecRNNTModel, ASRAGGBPEMixin):
             List of available pre-trained models.
         """
         results = []
+
+# Not yet ! 
+##        model = PretrainedModelInfo(
+##            pretrained_model_name="stt_en_contextnet_256",
+##            description="For details about this model, please visit https://ngc.nvidia.com/catalog/models/nvidia:nemo:stt_en_contextnet_256",
+##            location="https://api.ngc.nvidia.com/v2/models/nvidia/nemo/stt_en_contextnet_256/versions/1.6.0/files/stt_en_contextnet_256.nemo",
+##        )
+##        results.append(model)
+
 
         return results
 
@@ -99,6 +110,9 @@ class EncDecRNNTBPEMultiModel(EncDecRNNTModel, ASRAGGBPEMixin):
             self.joint.set_loss(self.loss)
             self.joint.set_wer(self.wer)
 
+#     def change_vocabulary(
+#         self, new_tokenizer_dir: str, new_tokenizer_type: str, decoding_cfg: Optional[DictConfig] = None
+#     ):
     def change_tokenizer(self, new_tokenizer_cfg: DictConfig,  decoding_cfg: Optional[DictConfig] = None):
 
         """
@@ -133,6 +147,8 @@ class EncDecRNNTBPEMultiModel(EncDecRNNTModel, ASRAGGBPEMixin):
         joint_config = self.joint.to_config_dict()
         new_joint_config = copy.deepcopy(joint_config)
         # new_joint_config['vocabulary'] = ListConfig(list(vocabulary.keys()))
+        if isinstance(vocabulary, dict):
+            vocabulary = list(vocabulary.keys())
         new_joint_config['vocabulary'] = ListConfig(vocabulary)
         new_joint_config['num_classes'] = len(vocabulary)
         del self.joint
@@ -254,10 +270,10 @@ class EncDecRNNTBPEMultiModel(EncDecRNNTModel, ASRAGGBPEMixin):
                 config=config, tokenizer=self.tokenizer, augmentor=augmentor
             )
 
-        if hasattr(dataset, 'collate_fn'):
-            collate_fn = dataset.collate_fn
-        else:
+        if type(dataset) is ChainDataset:
             collate_fn = dataset.datasets[0].collate_fn
+        else:
+            collate_fn = dataset.collate_fn
 
         return torch.utils.data.DataLoader(
             dataset=dataset,
@@ -298,4 +314,3 @@ class EncDecRNNTBPEMultiModel(EncDecRNNTModel, ASRAGGBPEMixin):
 
         temporary_datalayer = self._setup_dataloader_from_config(config=DictConfig(dl_config))
         return temporary_datalayer
-

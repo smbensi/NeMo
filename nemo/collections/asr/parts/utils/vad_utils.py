@@ -197,6 +197,7 @@ def get_vad_stream_status(data):
                 status[i] = 'single'
     return status
 
+
 def load_tensor_from_file(filepath: str) -> Tuple[torch.Tensor, str]:
     frame = []
     with open(filepath, "r") as f:
@@ -204,6 +205,7 @@ def load_tensor_from_file(filepath: str) -> Tuple[torch.Tensor, str]:
             frame.append(float(line))
 
     name = filepath.split("/")[-1].rsplit(".", 1)[0] 
+    
     return torch.tensor(frame), name
 
     
@@ -248,16 +250,6 @@ def generate_overlap_vad_seq(
     p.join()
 
     return overlap_out_dir
-
-
-def load_tensor_from_file(filepath: str) -> Tuple[torch.Tensor, str]:
-    frame = []
-    with open(filepath, "r") as f:
-        for line in f.readlines():
-            frame.append(float(line))
-
-    name = filepath.split("/")[-1].split(".")[0] 
-    return torch.tensor(frame), name
 
 
 @torch.jit.script
@@ -696,43 +688,51 @@ def vad_tune_threshold_on_dev(
     params_grid = get_parameter_grid(params)
 
     for param in params_grid:
-        # perform binarization, filtering accoring to param and write to rttm-like table
-        vad_table_dir = generate_vad_segment_table(vad_pred, param, shift_length_in_sec=0.01, num_workers=20)
+        try:
+                
+            # perform binarization, filtering accoring to param and write to rttm-like table
+            vad_table_dir = generate_vad_segment_table(vad_pred, param, shift_length_in_sec=0.01, num_workers=20)
 
-        # add reference and hypothesis to metrics
-        for filename in paired_filenames:
-            groundtruth_RTTM_file = groundtruth_RTTM_dict[filename]
-            vad_table_filepath = os.path.join(vad_table_dir, filename + ".txt")
-            reference, hypothesis = vad_construct_pyannote_object_per_file(vad_table_filepath, groundtruth_RTTM_file)
-            metric(reference, hypothesis)  # accumulation
+            # add reference and hypothesis to metrics
+            for filename in paired_filenames:
+                groundtruth_RTTM_file = groundtruth_RTTM_dict[filename]
+                vad_table_filepath = os.path.join(vad_table_dir, filename + ".txt")
+                reference, hypothesis = vad_construct_pyannote_object_per_file(vad_table_filepath, groundtruth_RTTM_file)
+                metric(reference, hypothesis)  # accumulation
 
-        # delete tmp table files
-        shutil.rmtree(vad_table_dir, ignore_errors=True)
+            # delete tmp table files
+            shutil.rmtree(vad_table_dir, ignore_errors=True)
 
-        report = metric.report(display=False)
-        DetER = report.iloc[[-1]][('detection error rate', '%')].item()
-        FA = report.iloc[[-1]][('false alarm', '%')].item()
-        MISS = report.iloc[[-1]][('miss', '%')].item()
+            report = metric.report(display=False)
+            DetER = report.iloc[[-1]][('detection error rate', '%')].item()
+            FA = report.iloc[[-1]][('false alarm', '%')].item()
+            MISS = report.iloc[[-1]][('miss', '%')].item()
 
-        assert (
-            focus_metric == "DetER" or focus_metric == "FA" or focus_metric == "MISS"
-        ), "Metric we care most should be only in 'DetER', 'FA'or 'MISS'!"
-        all_perf[str(param)] = {'DetER (%)': DetER, 'FA (%)': FA, 'MISS (%)': MISS}
-        logging.info(f"parameter {param}, {all_perf[str(param)] }")
+            assert (
+                focus_metric == "DetER" or focus_metric == "FA" or focus_metric == "MISS"
+            ), "Metric we care most should be only in 'DetER', 'FA'or 'MISS'!"
+            all_perf[str(param)] = {'DetER (%)': DetER, 'FA (%)': FA, 'MISS (%)': MISS}
+            logging.info(f"parameter {param}, {all_perf[str(param)] }")
 
-        score = all_perf[str(param)][focus_metric + ' (%)']
+            score = all_perf[str(param)][focus_metric + ' (%)']
 
-        del report
-        metric.reset()  # reset internal accumulator
+            del report
+            metric.reset()  # reset internal accumulator
 
-        # save results for analysis
-        with open(result_file + ".txt", "a") as fp:
-            fp.write(f"{param}, {all_perf[str(param)] }\n")
+            # save results for analysis
+            with open(result_file + ".txt", "a") as fp:
+                fp.write(f"{param}, {all_perf[str(param)] }\n")
 
-        if score < min_score:
-            best_threhsold = param
-            optimal_scores = all_perf[str(param)]
-            min_score = score
+        except:
+            pass
+
+        finally:
+
+            if score < min_score:
+                best_threhsold = param
+                optimal_scores = all_perf[str(param)]
+                min_score = score
+            print("Current best", best_threhsold, optimal_scores)
 
     return best_threhsold, optimal_scores
 

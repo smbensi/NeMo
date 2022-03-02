@@ -671,9 +671,16 @@ The most important component at the top level is the ``strategy``. It can take o
   decoding:
     strategy: "greedy_batch"
 
+    # preserve decoding alignments
+    preserve_alignments: false
+
+    # Overrides the fused batch size after training.
+    # Setting it to -1 will process whole batch at once when combined with `greedy_batch` decoding strategy
+    fused_batch_size: Optional[int] = -1
+
     # greedy strategy config
     greedy:
-      max_symbols: 30
+      max_symbols: 10
 
     # beam strategy config
     beam:
@@ -719,23 +726,28 @@ Refer to the above paper for results and recommendations of ``fastemit_lambda``.
 Fine-tuning Configurations
 --------------------------
 
-All ASR scripts support easy fine-tuning by partially/fully loading the pretrained weights from a checkpoint into the currently instantiated model. Pre-trained weights can be provided in multiple ways -
+All ASR scripts support easy fine-tuning by partially/fully loading the pretrained weights from a checkpoint into the **currently instantiated model**. Note that the currently instantiated model should have parameters that match the pre-trained checkpoint (such that weights may load properly). In order to directly fine-tune a pre-existing checkpoint, please follow the tuturial : `ASR Language Fine-tuning. <https://colab.research.google.com/github/NVIDIA/NeMo/blob/stable/tutorials/asr/ASR_CTC_Language_Finetuning.ipynb>_
+
+Pre-trained weights can be provided in multiple ways -
 
 1) Providing a path to a NeMo model (via ``init_from_nemo_model``)
 2) Providing a name of a pretrained NeMo model (which will be downloaded via the cloud) (via ``init_from_pretrained_model``)
 3) Providing a path to a Pytorch Lightning checkpoint file (via ``init_from_ptl_ckpt``)
+
+There are multiple ASR subtasks inside the ``examples/asr/`` directory, you can substitute the ``<subtask>`` tag below.
 
 Fine-tuning via a NeMo model
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: sh
 
-    python examples/asr/script_to_<script_name>.py \
+    python examples/asr/<subtask>/script_to_<script_name>.py \
         --config-path=<path to dir of configs> \
         --config-name=<name of config without .yaml>) \
         model.train_ds.manifest_filepath="<path to manifest file>" \
         model.validation_ds.manifest_filepath="<path to manifest file>" \
-        trainer.gpus=-1 \
+        trainer.devices=-1 \
+        trainer.accelerator='gpu' \
         trainer.max_epochs=50 \
         +init_from_nemo_model="<path to .nemo model file>"
 
@@ -745,12 +757,13 @@ Fine-tuning via a NeMo pretrained model name
 
 .. code-block:: sh
 
-    python examples/asr/script_to_<script_name>.py \
+    python examples/asr/<subtask>/script_to_<script_name>.py \
         --config-path=<path to dir of configs> \
         --config-name=<name of config without .yaml>) \
         model.train_ds.manifest_filepath="<path to manifest file>" \
         model.validation_ds.manifest_filepath="<path to manifest file>" \
-        trainer.gpus=-1 \
+        trainer.devices=-1 \
+        trainer.accelerator='gpu' \
         trainer.max_epochs=50 \
         +init_from_pretrained_model="<name of pretrained checkpoint>"
 
@@ -759,11 +772,12 @@ Fine-tuning via a Pytorch Lightning checkpoint
 
 .. code-block:: sh
 
-    python examples/asr/script_to_<script_name>.py \
+    python examples/asr/<subtask>/script_to_<script_name>.py \
         --config-path=<path to dir of configs> \
         --config-name=<name of config without .yaml>) \
         model.train_ds.manifest_filepath="<path to manifest file>" \
         model.validation_ds.manifest_filepath="<path to manifest file>" \
-        trainer.gpus=-1 \
+        trainer.devices=-1 \
+        trainer.accelerator='gpu' \
         trainer.max_epochs=50 \
         +init_from_ptl_ckpt="<name of pytorch lightning checkpoint>"

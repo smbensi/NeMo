@@ -310,6 +310,7 @@ def getRepeatedList(mapping_argmat, score_mat_size):
     repeat_list[idxs] = counts.int()
     return repeat_list
 
+
 def get_argmin_mat(uniq_scale_dict):
     """
     Calculate the mapping between the base scale and other scales. A segment from a longer scale is
@@ -341,7 +342,9 @@ def get_argmin_mat(uniq_scale_dict):
         session_scale_mapping_dict[scale_idx] = argmin_mat
     return session_scale_mapping_dict
 
+
 def getMultiScaleCosAffinityMatrix(uniq_embs_and_timestamps, device:  torch.device=torch.device('cpu')):
+
     """
     Calculate cosine similarity values among speaker embeddings for each scale then
     apply multiscale weights to calculate the fused similarity matrix.

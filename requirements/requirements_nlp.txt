@@ -2,7 +2,7 @@ boto3
 h5py
 matplotlib>=3.3.2
 numpy
-#rapidfuzz
+
 gdown
 inflect
 sacrebleu[ja]
